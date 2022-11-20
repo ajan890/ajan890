@@ -1,6 +1,11 @@
 README v1.0
 SOFTWARE v1.0
 
+#ABOUT
+This software was originally written for ENDER SMP Technical Minecraft Server in order
+to facilitate watermarking screenshots produced by players while connected to the ENDER
+SMP survival or creative servers.
+
 #FIRST LAUNCH
 On the first launch, the user will be greeted with a welcome screen, and prompted to choose
 an image, either a .jpg or .png (support for other file types may be added in the future),
