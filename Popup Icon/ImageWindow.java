@@ -16,16 +16,27 @@ import java.awt.Graphics2D;
 public class ImageWindow extends JFrame {
 
 	private static final long serialVersionUID = 2604044952471670358L;
-
+	private int rotation; 	//rotation: 0 = Bottom, 1 = Top, 2 = Left, 3 = Right
+	private boolean flip;
+	private int width;
+	private int height;
+	private int x = 0;
+	private int y = 0;
+	
+	
 	//rotation: 0 = Bottom, 1 = Top, 2 = Left, 3 = Right
 	public ImageWindow(int rotation, boolean flip, String imgPath) throws IOException {
 		super();		
+		
+		this.setRotation(rotation);
+		this.setFlip(flip);
+		
 		setUndecorated(true);
 		setBackground(new Color(0, 0, 0, 0));
 		
 		BufferedImage image = ImageIO.read(new File(imgPath));
-		int width = image.getWidth();
-		int height = image.getHeight();
+		width = image.getWidth();
+		height = image.getHeight();
 		
 		if (flip) {
 			AffineTransform f = AffineTransform.getScaleInstance(-1,  1);
@@ -52,12 +63,23 @@ public class ImageWindow extends JFrame {
 
 		
 		//x and y are some random coordinates
-		int x = 0, y = 0;
-		
-		
-		setBounds(x, y, width, height);	
-		
+		setBounds(x, y, width, height);			
 	}
+
+	public void move(int moveX, int moveY) {
+		setBounds(x + moveX, y + moveY, width, height);
+	}
+	
+	
+	
+	
+	
+	
+//getters and setters
+	public int getRotation() { return rotation;	}
+	public void setRotation(int rotation) { this.rotation = rotation; }
+	public boolean isFlip() { return flip; }
+	public void setFlip(boolean flip) { this.flip = flip; }
 	
 	
 }
