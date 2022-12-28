@@ -1,0 +1,440 @@
+**OPEN IN NOTEPAD FOR BEST READING EXPERIENCE**
+
+#INTRODUCTION---------------------------------------------------------------------------------------------------------------
+
+First, to answer Part 2 of the report specification, there are not any known bugs.  Everything I have tested has 
+worked as intended, and I believe I have implemented every part of the spec.
+
+Inheritance Tree for Actor objects:
+
+GraphObject
+    Actor
+	Peach
+	Block
+	    NormalBlock
+	    FlowerBlock
+	    MushroomBlock
+	    StarBlock
+	Pipe
+	Flag
+	Mario
+	Flower
+	Mushroom
+	Star
+	PiranhaFireball
+	PeachFireball
+	Shell
+	Goomba
+	Koopa
+	Piranha
+ 
+#Methods--------------------------------------------------------------------------------------------------------------------
+
+**ACTOR CLASS**
+
+Actor class contains one pure virtual method, 
+virtual void doSomething() = 0;
+
+Every class extended from Actor must have a doSomething() method, but it does not make sense for an Actor object to 
+exist by itself, not part of another class.
+
+Actor class also contains two other virtual methods,
+virtual void bonk(bool isPeach);
+virtual bool takeDamage();
+
+These could have easily been made pure virtual functions, but not every class requires these methods, and therefore,
+it would be more efficient to include them only where they are needed.  The classes that do not override these methods
+will call the ones in the Actor base class, which do nothing.
+
+The Actor class also contains multiple utility methods,
+
+StudentWorld* getWorld();
+bool getIsSolid();
+bool getIsDamagable();
+bool getIsDead();
+void setIsDead(bool isDead);
+void move(int x, int y);
+
+The first four return private fields StudentWorld* m_world, m_isSolid, m_isDamagable, and m_isDead, respectively.  The
+fifth allows the Actor's m_isDead field to be set to either true or false, and void move(int x, int y) calls the moveTo
+method in GraphObject to move the actor.  
+
+I included Actor::move(int x, int y) in order to simplify movement.  Instead of needing the destination location an 
+Actor is to move to, I can instead just type in the destination relative to the Actor.  For example, move(0, 2) would 
+move the actor two pixels up from where it currently is, and move(-4, 0) would move the actor four pixels left from where
+it currently is.
+
+**PEACH CLASS**
+
+The Peach class contains ten methods other than the constructor.
+void doSomething(), and bool takeDamage() override the methods in Actor.
+void bonk() does not override void bonk(bool isPeach) in the Actor class, because the one in the Actor class is for
+all other entities, which may or may need to check if Peach is calling the bonk method.  In the Peach class, it does
+not make sense for a Peach object to call bonk() on itself.
+
+Other methods include
+void setHP(int hp);
+void setShootPower(bool sp);
+void setJumpPower(bool jp);
+void setStarPower(bool sp, int time);
+bool getStarPower();
+bool getJumpPower();
+bool getShootPower();
+
+which as their names suggest, are setter and getter methods for the fields m_hp, bool starPower, bool shootPower, bool
+jumpPower.  the "int time" parameter in the setStarPower method is for setting the number of invincibility ticks 
+received for collecting a Star goodie.
+
+**BLOCK CLASSES**
+Fundamentally, the block classes NormalBlock, FlowerBlock, MushroomBlock, and StarBlock are the same.  They all have
+a bool isBonked field and the methods void bonk(), void doBonk(), and bool getIsBonked(), and behave the same way 
+when bonked.  Their only difference is the goodie they release.  A NormalBlock object will release no goodie when 
+bonk()'ed, and the FlowerBlock, MushroomBlock, and StarBlock will release Flower, Mushroom, and Star goodies, 
+respectively.
+
+doBonk() sets the isBonked field to true.  There is no way to change it back to false.  This field is used to determine 
+whether or not the block can release a goodie when bonk()'ed, since a given block can only release one goodie per play.
+
+**PIPE CLASS**
+The pipe class only contains a constructor, a bonk(bool isPeach) method, and a void doSomething() method, both of which
+only exist to override the virtual methods in Actor.  Neither method does anything.
+
+**MARIO CLASS**
+The Mario class only contains a constructor, a bonk(bool isPeach) method, and a void doSomething() method, both of which
+exist to override the virtual methods in Actor.  The bonk() method does nothing, but the doSomething() method constantly
+checks for overlap with Peach.
+
+**POWERUP CLASSES**
+The Flower, Mushroom, and Star classes each contain a constructor, bonk(bool isPeach) method, and doSomething() method.
+The bonk methods do nothing.  The doSomething() methods check for overlap with Peach each tick, and if no overlap is
+found, move the actor accordingly.
+
+**FIREBALL CLASSES**
+The two fireball types, the PiranhaFireball and PeachFireball, behave exactly the same way, except for one small difference.
+PiranhaFireballs are fired by Piranhas and are hostile towards Peach, and PeachFireballs are fired by Peach and hostile
+to all other enemies.  Each have a bonk() method which does nothing, and doSomething() method, which serve to check for
+hitbox overlaps and move the Actors.
+
+**SHELL CLASS**
+Shells behave exactly the same way as fireballs except they are created when a Koopa is defeated by Peach.  Its bonk() 
+method does nothing, and its doSomething() method serves to detect for hitbox overlaps with enemies and move the actor.
+
+**ENEMY CLASSES**
+Goombas, Koopas, and Piranhas are the three main enemies present in the game.  All three classes have a constructor,
+bonk() method, takeDamage() method, and doSomething() method.  The bonk() method plays a sound effect and calls the 
+takeDamage() method, which would kill the Actor.  They do the same thing, the only difference is the sound effect.  
+Bonk() is called when Peach contacts an enemy while having StarPower, and takeDamage() is called whenever the enemy is
+killed by any other means.  The doSomething() method moves the Actor and checks hitboxes for the Goomba and Koopa.  It
+checks whether fireballs should by shot for the Piranha.
+
+**STUDENTWORLD CLASS**
+Other than the init(), move(), cleanUp(), constructor, and destructor, the StudentWorld class contains two get methods,
+
+Peach* getPeach();
+std::vector<Actor*>* getLevelData();
+
+which returns pointers to its Peach object and levelData vector, respectively.  The StudentWorld class also contains
+two methods
+
+void completeLevel();
+void win();
+
+which tells the GameWorld when to end the levels, and the three utility methods
+
+bool checkEntityCollision(Actor* actor, int x, int y, bool damage, bool checkMulti, bool isPeach);
+bool checkSolidCollision(int x, int y, bool callBonk, bool isPeach);
+bool checkPeachCollision(int x, int y);
+
+Their pseudocodes and explanations are provided further down.
+
+**AUXILIARY METHODS**
+
+Actor.h / Actor.cpp (but not in any classes)
+void walk(Actor* actor, bool stepOff, bool processHostile, bool turnAround, int walkingSpeed);
+
+Used for movement of all Actors.
+
+#DESIGNS AND IMPLEMENTATIONS------------------------------------------------------------------------------------------------
+
+It may seem strange that I would put a walk() method as an auxiliary method that requires a pointer to the actor 
+calling it.  When I first implemented it, I expected it would be used for the Koopa and Goomba classes, since their 
+movement patterns are exactly the same.  After all, the only real difference between the two classes is that Koopas
+would drop a shell upon death.  I did not think it would make sense in the context of all other movement, and 
+therefore did not consider adding it as a member function for Actor.  I also did not consider adding a Enemy class
+containing only Koopas, Goombas, and Piranhas, since that group had nothing different that they all shared that other 
+Actor classes did not have.  Adding a new class just for one method seemed unnecessary.  However, over time, I learned 
+that the movement of everything is actually very similar; they all require checking the same hitboxes, they just 
+interacted with the world in slightly different ways.  Instead of writing a new method for shells and fireballs, I 
+decided that their movement is was similar enough to that of enemies, and just lumped it in to the existing walk() 
+method, with booleans in the method to differentiate behavior.  At this point, it was too late for me to add it into 
+Actor, since that would require a lot of recoding.  But the program works.  
+
+As for the collision-checking methods in StudentWorld, I chose to put them in StudentWorld for the easy access to the
+levelData array, which is the list of every actor on the screen.  checkEntityCollision() only checks hitboxes for 
+transparent Actors (Actors that other Actors can pass through), and is only used for enemy, fireball, and shell hitbox
+collisions.  checkSolidCollision() only checks collision for solid blocks, specifically blocks and pipes.  
+checkPeachCollision() only checks collision with Peach.  I differentiated between checking these hitboxes because although
+all of them are Actors, I would not need to check transparent Actors when determining whether or not an Actor is 
+standing on the ground or floating in the air, and when checking for entities for a fireball to damage I do not need
+to parse through each block and determine whether or not it is damageable.  Differentiating these methods allows me to 
+check one less if statement for every actor not included in the set, and for the maximum of 324 entities on the screen 
+at 20 ticks per second, ends up saving a reasonable amount of computations.
+
+#PSEUDOCODE FOR SPECIFIED METHODS-------------------------------------------------------------------------------------------
+
+bool checkEntityCollision(Actor* actor, int x, int y, bool damage, bool checkMulti, bool isPeach) {
+    /*
+    PARAMETER DESCRIPTION
+    Actor* actor: a pointer to the Actor calling the method, to prevent the Actor from detecting a hitbox collision with itself
+    int x, int y: x and y coordinates to check if inside an entity's hitbox
+    bool damage: if true, damage the Actor if (x, y) is inside its hitbox by calling bonk() or takeDamage()
+    bool checkMulti: if true, check every Actor in the vector. if false, return after finding the first Actor with a hitbox overlap
+    	For example, a fireball object would disappear after damaging one Actor, even if there is more than one Actor 
+    	overlapping with it.  Meanwhile, a Peach object will destroy every Actor overlapping its hitbox in a given tick.
+    bool isPeach: true only if Peach is calling the method, false otherwise.  Only used if damage is true.  If isPeach is true,
+    	then bonk(isPeach) will be called instead of takeDamage(), which is only called by fireballs and shells.
+    */
+	
+    for (every Actor in levelData vector) {
+	if (the Actor found is not actor (parameter), not dead, and is damagable) {
+	    if (hitbox is overlapping) {
+		if (damage is true) {
+		    if (peach called the method) call bonk(isPeach) on the Actor;
+		    else call takeDamage() on the Actor;
+		}
+		if (!checkMulti) {
+		    return true; //since an overlapping Actor has been found
+		}
+		else {continue checking}
+	    }
+	}
+    }
+    return true if at least one Actor was found, false otherwise;
+}
+
+bool checkPeachCollision(int x, int y) {
+    if ((x, y) is inside Peach's hitbox) return true;
+    else return false;
+}
+
+bool checkSolidCollision(int x, int y, bool callBonk, bool isPeach) {
+    /*
+    PARAMETER DESCRIPTION
+    int x, int y: x and y coordinates to check if inside a solid object's hitbox (either block or pipe)
+    bool callBonk: if true, call bonk on the Actor (x, y) is in.  Used to only bonk the block if Peach jumped into it, and not when 
+	checking if the block a pixel ahead is a valid floor or wall tile.
+    bool isPeach: true only if Peach is calling this method; used to determine if Peach is bonking a block
+    */
+    
+    for (every Actor in levelData vector) {
+	if (Actor is solid, only Blocks and Pipes have this property) {
+	    if ((x, y) is in Actor's hitbox) {
+		if (!callBonk) return true;
+		else {
+		    call bonk(isPeach) on the block;
+		    continue searching;
+		}
+	    }
+	}
+    }
+    return true if at least one Actor was found, false otherwise;
+}
+
+void walk(Actor* actor, bool stepOff, bool processHostile, bool turnAround, int walkingSpeed) {
+    /*
+    PARAMETER DESCRIPTION
+    Actor* actor: pointer to the Actor object that called the method
+    bool stepOff: if true, the Actor is allowed to step off the floor instead of turning around when hitting an edge.
+    bool processHostile: if true, check for Peach's hitbox before taking a step, and bonk() Peach if there happens to be a collision
+	NOTE: This may be false even if an Actor is hostile towards Peach.  This boolean determines whether hostility should be 
+	calculated in this method, not whether it is hostile or not.  Hostility may be calculated outside of this method.
+    bool turnAround: if true, turn around when hitting a wall.  if false, kill the actor upon hitting a wall.
+    int walkingSpeed: The number of pixels an Actor moves per tick
+    */
+    
+    if (Actor is dead) return immediately;
+
+    if (processHostile) check Peach collision, if true, bonk her and return.
+
+    bool canMoveRight = false; //used to keep track if an Actor is allowed to move in that direction
+    bool canMoveLeft = false;
+
+    //DETERMINE IF MOVING RIGHT IS POSSIBLE
+    if (no block directly to the right of the Actor) {
+	if (ground to right of the Actor) {
+	    canMoveRight = true;
+	}
+	if (stepOff is allowed) canMoveRight = true;  //whether or not there is ground, the Actor can move as long as there is no wall
+    }
+    else if (Actor is going right and is not allowed to turn around) kill actor, return; //there is a wall to the right
+    
+    //DETERMINE IF MOVING LEFT IS POSSIBLE
+    if (no block directly to the left of the Actor) {
+	if (ground to left of the Actor) {
+	    canMoveLeft = true;
+	}
+	if (stepOff is allowed) canMoveLeft = true; //whether or not there is ground, the Actor can move as long as there is no wall
+    }
+    else if (Actor is going left and is not allowed to turn around) kill actor, return; //there is a wall to the left
+
+    //GROUND DETECTION
+    if (there is no block below the Actor, in other words, Actor is floating) {
+	move down by walkingSpeed number of pixels, making sure not to clip into the ground;
+    }
+
+    //WALK
+    if (Actor is facing right) {
+	if (Actor is allowed to move right) move right by walkingSpeed number of pixels;
+	else if (Actor can move left) {
+	    set Actor direction to left;
+	    move left by walkingSpeed number of pixels;
+	} else {
+	    set Actor direction to left;
+	}
+    }
+    else { //Actor is facing left
+	if (Actor is allowed to move left) move left by walkingSpeed number of pixels;
+	else if (Actor can move right) {
+	    set Actor direction to right;
+	    move right by walkingSpeed number of pixels;
+	} else {
+	    set Actor direction to right;
+	}
+    }
+}
+
+#ADDITIONAL NOTES FOR WALK--------------------------------------------------------------------------------------------------
+
+Each tick, whether an entity can move in both directions is calculated for the case where the an entity meets an edge 
+and needs to turn around.  The spec demands that an entity turns around, and if it can move in the opposite direction, 
+it does so in the same tick.  Doing this saves many nested if statements (and repetitive code) checking whether an 
+entity can move in a given direction twice.
+
+Examples of how walk() is called:
+
+Take Koopa for an example:
+1.  Check if it is alive.
+2.  Check if overlaps Peach; bonk if overlap
+3.  Determine if it can move one pixel forward
+4.  Koopa cannot walk off edges
+5.  Koopa is allowed to turn around
+6.  Determine direction
+7.  Move in that direction 1 pixel
+
+Statements 1, 3, 6, and 7 are already done for every Actor that calls walk().
+2, 4, and 5 would be done by calling walk with stepOff = false, processHostile = true, turnAround = true;
+
+Therefore,
+walk(this, false, true, true, 1);
+would encapsulate all the movement for Koopa on a given tick.
+
+For shell, 
+1.  Check if it is alive.
+2.  Check if it overlaps any other entity, other than Peach.
+3.  Determine if it can move two pixels forward
+4.  Shells may fall off edges
+5.  Shells die once they hit a wall
+6.  Determine direction
+7.  Move in that direction 2 pixels
+
+This would be entered as
+walk(this, true, false, false, 2);
+In this case, Shell is not hostile to Peach, so don't check for hostility.  Instead, overlap would be checked outside of the method.
+
+Finally, for Star,
+1.  Check if it is alive.
+2.  Check if it overlaps Peach.
+3.  Determine if it can move two pixels forward
+4.  Stars may fall off edges
+5.  Stars are allowed to change direction upon hitting a wall
+6.  Determine direction
+7.  Move in that direction 2 pixels.
+
+This would be entered as
+walk(this, true, false, false, 2);
+Star is checking for Peach's hitbox, but done outside the method, since the bonk() method isn't to be called by Star.
+
+The only transparent, damageable actor that does not use the walk() method is the Piranha; it is not supposed to move.
+walk() is used for Star, Mushroom, Flower, PiranhaFireball, PeachFireball, Shell, Goomba, and Koopa.
+
+#PEACH DOSOMETHING() IMPLEMENTATION-----------------------------------------------------------------------------------------
+
+The only large method that has non-trivial function is Peach's doSomething() method.
+
+void Peach::doSomething() {
+    //CHECK IF PEACH IS ALIVE
+    if (Peach is dead) return;
+    
+    //CHECK COOLDOWNS AND POWER-UP TICKS
+    if (Peach has at least 1 invincibility tick) {
+	decrement invincibility ticks;
+	set isInvincible to true;
+    }
+
+    if (Peach has at least 1 starPower tick) {
+	decrement starPower ticks;
+	set starPower to true;
+    }
+
+    if (fireball Recharge has at least 1 tick) {
+	decrement fireRecharge;
+    }
+
+    //CHECK IF PEACH IS ON THE GROUND
+    if (peach is on the ground) { //uses hitbox tracking, expensive procedure
+	bool grounded = true;
+    } else {bool grounded = false;} //The variables to keep track are used later
+
+    //CHECK IF PEACH IS IN THE MIDDLE OF A JUMP
+    if (remainingJumpDistance > 0) {
+	decrement remainingJumpDistance;
+	if (there is nothing blocking Peach from moving up) move up;
+	else {
+	    set remainingJumpDistance to 0;
+	    bonk the block above Peach (done in the checkSolidCollision method);
+	}
+    }
+
+    //CHECK IF PEACH IS FALLING
+    if (peach is not grounded, remainingJumpDistance == 0) {
+	move Peach down 3 pixels, checking each one to make sure she does not clip into the ground;
+    }
+
+    //GET INPUT FROM PLAYER (KEYSTROKES)
+    if (a key is pressed) int keyPressed = key pressed by player;
+	
+	switch(keyPressed) {
+	case UP: //Peach jumps
+	    play jumping sound;
+	    if (grounded) { //player can only jump from the ground
+		if (Peach does not have jumpPower) {
+		    remainingJumpDistance = 8;
+		} else remainingJumpDistance = 12;
+	    } 
+	    break;
+	case DOWN: //do nothing
+	    break;
+	case LEFT: //Peach moves left
+	    set Peach's direction to left;
+	    check collision on left, move if possible;
+	    break;
+	case RIGHT: //Peach moves right
+	    set Peach's direction to right;
+	    check collision on right, move if possible;
+	    break;
+	case SPACE: //Peach shoots fireball
+	    if (Peach does not have firePower) break;
+	    if (fireball is on cooldown) break;
+	    play fireball sound;
+	    set fireball cooldown to 8 ticks;
+	    if (Peach is facing right) {
+		check nothing is to the right blocking fireball;
+		create fireball moving right;
+	    } else {
+		check nothing is to the left blocking fireball;
+		create fireball moving left;
+	    }
+	default: //any other key, do nothing
+	    break;
+	}
+}

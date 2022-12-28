@@ -1,0 +1,6 @@
+﻿  StudentWorld.cpp
+C:\Users\Aidan\source\repos\SuperPeachSisters\SuperPeachSisters\StudentWorld.cpp(117,23): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Aidan\source\repos\SuperPeachSisters\SuperPeachSisters\StudentWorld.cpp(121,23): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Aidan\source\repos\SuperPeachSisters\SuperPeachSisters\StudentWorld.cpp(159,23): warning C4018: '<': signed/unsigned mismatch
+C:\Users\Aidan\source\repos\SuperPeachSisters\SuperPeachSisters\StudentWorld.cpp(186,23): warning C4018: '<': signed/unsigned mismatch
+  SuperPeachSisters.vcxproj -> C:\Users\Aidan\source\repos\SuperPeachSisters\Debug\SuperPeachSisters.exe
