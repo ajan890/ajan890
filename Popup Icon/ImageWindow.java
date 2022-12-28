@@ -25,7 +25,7 @@ public class ImageWindow extends JFrame {
 	
 	
 	//rotation: 0 = Bottom, 1 = Top, 2 = Left, 3 = Right
-	public ImageWindow(int rotation, boolean flip, String imgPath) throws IOException {
+	public ImageWindow(int rotation, boolean flip, BufferedImage image) throws IOException {
 		super();		
 		
 		this.setRotation(rotation);
@@ -34,9 +34,7 @@ public class ImageWindow extends JFrame {
 		setUndecorated(true);
 		setBackground(new Color(0, 0, 0, 0));
 		
-		BufferedImage image = ImageIO.read(new File(imgPath));
-		width = image.getWidth();
-		height = image.getHeight();
+		
 		
 		if (flip) {
 			AffineTransform f = AffineTransform.getScaleInstance(-1,  1);
