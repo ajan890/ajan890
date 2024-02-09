@@ -13,6 +13,8 @@ public class MovePanel {
 	private Timer timer;
 	private int[][] nodes;
 	private int speed;
+	private MoveList moveList;
+	
 	
 	//speed is how many pixels it moves per time interval (10ms).  
 	//nodes is an array of coordinates (int [2]) that will determine points on the screen the window moves through. 
@@ -20,24 +22,25 @@ public class MovePanel {
 		
 	    //TO-DO: Create folder in C:/ to store images, read file from dir
 	    
+	    moveList = new MoveList();
 	    
 		try {
 			frame = new ImageWindow(0, false, image);
 	        frame.setVisible(true);
-	        
-	        int index = 0;
-	        int[] currentNode = nodes.get(index);
-	        
-	        timer = new Timer(10, new ActionListener() {
-	        	public void actionPerformed(ActionEvent e) {
-	        		frame.move
-	        	}
-	        });
-	        			
+	        	        			
 			
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public void setMoves(String moves) {
+		
+	}
+	
+	public void move(int x, int y) {
+		frame.setBounds(frame.getX() + x, frame.getY() + y, frame.getWidth(), frame.getHeight());
+		return;
 	}
 	
 }
