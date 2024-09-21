@@ -1,0 +1,203 @@
+------------------------------ORIGINAL SEQUENTIAL CODE:------------------
+#include <omp.h>
+#include "kernel.h"
+void kernel_seq(int *input, int *ref, int64_t rows, int64_t cols, int penalty) {
+
+  for (int i = 1; i < rows; ++i) {
+    for (int j = 1; j < cols; ++j) {
+
+      int64_t idx = i * cols + j;
+
+      int64_t idxNW = idx - cols - 1;
+      int64_t idxN = idx - cols;
+      int64_t idxW = idx - 1;
+      int r = ref[idx];
+      int inputNW = input[idxNW];
+      int inputW = input[idxW];
+      int inputN = input[idxN];
+
+      input[idx] = maximum(inputNW + r, inputW - penalty, inputN - penalty);
+    }
+  }
+}
+
+------------------------------PARALLELIZED CODE:-------------------------
+#include <omp.h>
+#include "kernel.h"
+#define TILE_SIZE 32
+
+    void kernel_omp(int *input, int *ref, int64_t rows, int64_t cols, int penalty) {
+[3] int64_t tileCols = (cols - 1) / TILE_SIZE;
+    int64_t i, j;
+
+[4] //intermediate calculation constants to reduce need for multiplication
+    int64_t temp0 = cols;
+    int64_t temp1 = cols * rows;
+    const int64_t tempInc1 = TILE_SIZE * (cols - 1);
+    const int64_t tempInc2 = tempInc1 + TILE_SIZE;
+
+[1] for (i = 0; i < tileCols; i++) {
+        #pragma omp parallel for
+        for (j = 0; j <= i; j++) {
+            //can't move tempInc * j outside or
+            int64_t idx = temp0 + j * tempInc1;                     
+            int64_t idxNW = idx - cols - 1;                                             
+            int64_t idxN = idx - cols;                                
+            int64_t idxW = idx - 1;                                
+            for (int k = 0; k < TILE_SIZE; k++) {                        
+                for (int l = 0; l < TILE_SIZE; l++) {                    
+[5]                 idx++;//memory dump position of input[i][j]
+                    idxNW++; //memory dump position of input[i-1][j-1]
+                    idxN++; //memory dump position of input[i-1][j]
+                    idxW++; //memory dump position of input[i][j-1]
+                    int r = ref[idx];
+                    int inputNW = input[idxNW]; //value at idxNW
+                    int inputW = input[idxW]; //value at idxW
+                    int inputN = input[idxN]; //value at idxN
+
+                    input[idx] = maximum(inputNW + r, inputW - penalty, inputN - penalty);
+                }
+                idx += (cols - TILE_SIZE);
+                idxNW += (cols - TILE_SIZE);
+                idxN += (cols - TILE_SIZE);
+                idxW += (cols - TILE_SIZE);
+            }
+        }
+        temp0 += TILE_SIZE;
+    }
+
+[2] for (i = 1; i < tileCols; i++) {
+        #pragma omp parallel for
+        for (j = i; j < tileCols; j++) {
+            int64_t idx = temp1 - j * tempInc1;                      
+            int64_t idxNW = idx - cols - 1;                          
+            int64_t idxN = idx - cols;                            
+            int64_t idxW = idx - 1;                               
+            for (int k = 0; k < TILE_SIZE; k++) {                 
+                for (int l = 0; l < TILE_SIZE; l++) {               
+                    idx++; //memory dump position of input[i][j]
+                    idxNW++; //memory dump position of input[i-1][j-1]
+                    idxN++; //memory dump position of input[i-1][j]
+                    idxW++; //memory dump position of input[i][j-1]
+                    int r = ref[idx];
+                    int inputNW = input[idxNW]; //value at idxNW
+                    int inputW = input[idxW]; //value at idxW
+                    int inputN = input[idxN]; //value at idxN
+
+                    input[idx] = maximum(inputNW + r, inputW - penalty, inputN - penalty);
+                }
+                idx += (cols - TILE_SIZE);
+                idxNW += (cols - TILE_SIZE);
+                idxN += (cols - TILE_SIZE);
+                idxW += (cols - TILE_SIZE);
+            }
+        }
+        temp1 += tempInc2;
+    }
+}
+
+-------------------------------------------------------------------------
+The code above has tags denoted by [n], which are referenced later.
+
+The parallelized code, in a nutshell, uses matrix tiling to make the code 
+more cache friendly, and omp to allow multiple threads to run parts of 
+the program at the same time.  The tiles are traversed in antidiagonal 
+order, shown below, in a smaller example matrix:
+
+Each square represents one tile, each with some number of array indices.
+
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+    |  1  |  2  |  4  |  7  |  11 |  16 |  22 |  29 | Antidiagonal tiling
+    |     |     |     |     |     |     |     |     | removes the 
+    +-----+-----+-----+-----+-----+-----+-----+-----+ dependencies 
+    |  3  |  5  |  8  |  12 |  17 |  23 |  30 |  7  | between the tiles, 
+    |     |     |     |     |     |     |     |     | allowing all the 
+    +-----+-----+-----+-----+-----+-----+-----+-----+ tiles on a given
+    |  6  |  9  |  13 |  18 |  24 |  31 |  6  |  13 | antidiagonal to 
+    |     |     |     |     |     |     |     |     | execute at the same
+    +-----+-----+-----+-----+-----+-----+-----+-----+ time on multiple
+    |  10 |  14 |  19 |  25 |  32 |  5  |  12 |  18 | threads. For 
+    |     |     |     |     |     |     |     |     | example, tiles 7,  
+    +-----+-----+-----+-----+-----+-----+-----+-----+ 8, 9, and 10 can  
+    |  15 |  20 |  26 |  33 |  4  |  11 |  17 |  22 | all be executed in
+    |     |     |     |     |     |     |     |     | any order, and 
+    +-----+-----+-----+-----+-----+-----+-----+-----+ still produce the
+    |  21 |  27 |  34 |  3  |  10 |  16 |  21 |  25 | correct result.
+    |     |     |     |     |     |     |     |     |
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+    |  28 |  35 |  2  |  9  |  15 |  20 |  24 |  27 |
+    |     |     |     |     |     |     |     |     |
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+    |  36 |  1  |  8  |  14 |  19 |  23 |  26 |  28 |
+    |     |     |     |     |     |     |     |     |
+    +-----+-----+-----+-----+-----+-----+-----+-----+
+
+Notice that the numbering resets just past halfway through the matrix;
+the upper left half is calculated by the nested for loops at [1], and 
+the bottom right half is calculated by the nested for loops at [2].  
+This separation is necessary in order to prevent accesses of indices
+outside of the matrix.  The indices in each tile are executed 
+sequentially, but multiple tiles may be executed at the same time.  The
+motivation for not executing the individual indices in antidiagonal
+order, despite the removal of dependencies, is the large overhead in 
+constantly creating and destroying threads.  Iterating the tiles in 
+antidiagonal form is considerably faster than iterating the indices.  
+During testing, antidiagonal indices were only able to reach a speed 
+boost of 1.13x compared to the sequential program, while the antidiagonal
+tiles were able to reach a 3.53x speed boost.
+
+The outer set of for loops in [1] iterates from left to right, and 
+diagonally down-left.  The i variable being incremented represents moving
+the tile right one position, and the j variable being incremented 
+represents moving the tile left and down one position.  Thus, each 
+antidiagonal ends when j == i, and the entire half of the matrix finishes
+when i == (number of tiles in a row), given by tileCols [3]. For each 
+tile, the original position of idx, the location of the index to be 
+operated on, is determined by 
+
+(*)    idx = cols + 1 + (i - j) * TILE_SIZE + j * TILE_SIZE * cols
+
+where the first two terms represent the boundaries of the matrix, the 
+first row and column, where the numbers are not operated on (therefore
+the calculation starts at position (1, 1) rather than (0, 0)), the 
+third term represents the horizontal position of the tile, and the
+fourth term the vertical position. In the inner loops, the idx position
+is just incremented with every loop cycle, in order to save computing
+the multiplication on every iteration. The original values of idxNW, 
+idxN, and idxW are calculated by subtracting (cols + 1), (cols), and (1),
+respectively, and the inner loops increment their values along with that
+of idx. However, the equation above (*) still has a flaw, in that there 
+are three multiplication operators that are still executed every time the
+tile is moved. To fix this, the constants (TILE_SIZE * cols) and 
+(cols + 1) are factored out and placed in the integers tempInc1 and 
+temp0, respectively. [4] Additionally, the i * TILE_SIZE, because it can 
+be computed before the parallel section, is factored out and changed to 
+iterate once on every i loop, saving another multiplication operator. 
+This term is included in the temp0 integer, to avoid creating an 
+additional constant.  Due to these optimizations of moving the variables
+out of the inner loop, make the inner loops very simple; they only 
+increment the index variables [5] - a very cheap operation relative to 
+recalculating the position every single iteration.
+
+The second set of nested for loops [2] work in a similar fashion, only
+it iterates from the bottom up instead from top to bottom. Since 
+antidiagonals can be processed in any order, this does not change the
+result. This order was chosen simply to make the calculations more 
+straightforward, and the constants more similar to the first set of 
+nested for loops [1], and easier to work with. The second set of for 
+loops use the constants temp1 and tempInc2, which represent the same
+components as described in the first set, only the direction the tile 
+moves relative to i and j is the opposite.
+
+During testing, loop unrolling was also experimented with, but it made 
+the code very challenging to read, but more importantly, made a 
+negligable difference in execution time. As a result, it was not included
+in this optimization. The TILE_SIZE constant was also optimized by brute
+force.  Since all the matrices are guaranteed to be square and its side
+length a power of two, all the powers of two from 2 to 2048 were tested
+as possible tile sizes.  A tile size of 32 yielded the quickest result 
+for a matrix of size 2048, running on 4 threads.
+
+
+
+

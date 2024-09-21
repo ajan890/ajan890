@@ -1,0 +1,38 @@
+I was able to complete all parts of the project without using any banned STL
+components.  There are not any bugs that I know of, although loading time is 
+inconsistent between computers. I am not sure just because of the number of 
+user profiles though. Loading takes about 3.7s on Visual Studio on my 
+computer, ~7s on g32. Listing emails after inputting the number of matches 
+needed is limited by the speed print statements are executed, on both my 
+computer and on g32.
+
+For testing my RadixTree class, I created a main test routine that would 
+insert the words in the following order:
+-coin (first insertion)   
+-care (insertion shares same first letter, creates a new branch off node)
+-core (insertion proceeds down the correct branch)
+-careful (first letters already in node, adds a node for last 3 letters)
+-car (adds a word that is already contained completely in a node)
+-test (insertion at the root)
+
+Then, I would search for the words and ensure they had the correct values I 
+inputted in.  Plus these extra strings:
+-co (checking that a node that contains the string exactly does not return a
+value)
+-caref (checking that a string that does not completely fit within a node does 
+not return a value)
+
+I also added breakpoints and used the debugger function on Visual Studio to 
+see what was stored in the variables at every step.
+
+The PersonProfile, AttributeTranslator, and MemberDatabase classes were 
+tested by loading the translator and profile files and inserting the elements 
+into the radix tree.  Breakpoints allowed me to look in the variables to 
+ensure elements were loaded correctly.  After fixing the bugs so the program 
+ran correctly, I uploaded the files to g32 to check for memory leaks (which 
+I leaked a personal best of 5GB of data), and then revised my radix tree.
+
+The MatchMaker class was tested using the main.cpp that was provided. 
+Luckily, there were not many problems there, and I only had to make minor 
+changes after testing.
+
